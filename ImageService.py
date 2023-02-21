@@ -154,23 +154,31 @@ def on_message(cli, userdata, message):
                     go_topic = "droneCircus/autopilotService/go"
                     if code == 1:
                         # north
-                        clientAutopilot.publish(go_topic, "North")
+                        # clientAutopilot.publish(go_topic, "North")
+                        client.publish(go_topic, "North")
                     elif code == 2:  # south
-                        clientAutopilot.publish(go_topic, "South")
+                        # clientAutopilot.publish(go_topic, "South")
+                        client.publish(go_topic, "South")
                     elif code == 5:
-                        clientAutopilot.publish("droneCircus/autopilotService/drop")
+                        # clientAutopilot.publish("droneCircus/autopilotService/drop")
+                        client.publish("droneCircus/autopilotService/drop")
                         time.sleep(2)
-                        clientAutopilot.publish("droneCircus/autopilotService/reset")
+                        # clientAutopilot.publish("droneCircus/autopilotService/reset")
+                        client.publish("droneCircus/autopilotService/reset")
                     elif code == 3:  # east
-                        clientAutopilot.publish(go_topic, "East")
+                        # clientAutopilot.publish(go_topic, "East")
+                        client.publish(go_topic, "East")
                     elif code == 4:  # west
-                        clientAutopilot.publish(go_topic, "West")
+                        # clientAutopilot.publish(go_topic, "West")
+                        client.publish(go_topic, "West")
                     elif code == 6:
                         returning = True
                         direction = "Volviendo a casa"
-                        clientAutopilot.publish("droneCircus/autopilotService/returnToLaunch")
+                        # clientAutopilot.publish("droneCircus/autopilotService/returnToLaunch")
+                        client.publish("droneCircus/autopilotService/returnToLaunch")
                     elif code == 0:
-                        clientAutopilot.publish(go_topic, "Stop")
+                        # clientAutopilot.publish(go_topic, "Stop")
+                        client.publish(go_topic, "Stop")
 
 
 def on_message_autopilot(cli, userdata, message):
@@ -201,8 +209,10 @@ def ImageService ():
     video_on = False
     returning = False
 
-    broker_address ="localhost"
-    broker_port = 8080 # si s'utilitza el broker.hivemq canviar el port pk no coincideixi
+    # broker_address ="localhost"
+    # broker_port = 8080
+    broker_address = "broker.hivemq.com"
+    broker_port = 8000
     cap = cv2.VideoCapture(0)
     client = mqtt.Client(transport="websockets")
     client.on_message = on_message # Callback function executed when a message is received
@@ -211,12 +221,12 @@ def ImageService ():
     print('Waiting connection')
     client.loop_start()
 
-    broker_address = "broker.hivemq.com"
-    broker_port = 8000
-    clientAutopilot = mqtt.Client(transport="websockets")
-    clientAutopilot.on_message = on_message_autopilot  # Callback function executed when a message is received
-    clientAutopilot.connect(broker_address, broker_port)
-    clientAutopilot.loop_start()
+    # broker_address = "broker.hivemq.com"
+    # broker_port = 8000
+    # clientAutopilot = mqtt.Client(transport="websockets")
+    # clientAutopilot.on_message = on_message_autopilot  # Callback function executed when a message is received
+    # clientAutopilot.connect(broker_address, broker_port)
+    # clientAutopilot.loop_start()
 
 
 if __name__ == '__main__':
