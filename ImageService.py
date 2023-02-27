@@ -47,6 +47,7 @@ def on_message(cli, userdata, message):
     global video_on
     global clientAutopilot
     global returning
+    # global contador
 
     splited = message.topic.split("/")
     origin = splited[0]
@@ -71,8 +72,7 @@ def on_message(cli, userdata, message):
         else:
             detector = FaceDetector()
         video_on = True
-        client.subscribe('+/imageService/videoFramePractice')
-        client.subscribe('+/imageService/videoFrameFlying')
+        client.subscribe('+/imageService/videoFrame')
 
     if command == 'stopVideoStream':
 
@@ -81,7 +81,7 @@ def on_message(cli, userdata, message):
         code_sent = False
         video_on = False
 
-    if command == 'videoFramePractice':
+    if command == 'videoFrame':
         # Decoding the message
         image = base64.b64decode(message.payload)
         # converting into numpy array from buffer
@@ -106,6 +106,8 @@ def on_message(cli, userdata, message):
                 x.start()
                 # if user changed the pattern we will ignore the next 8 video frames
                 print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
+                # contador = contador + 1
+                # print("contador: ", contador)
                 if code != prevCode:
                     cont = 4
                     prevCode = code
@@ -116,69 +118,13 @@ def on_message(cli, userdata, message):
                         # the first 8 video frames of the new pattern (to be ignored) are done
                         # we can start showing new results
                         if not code_sent:
-                            direction = __set_direction(int(code))
-                            client.publish('imageService/droneCircus/direction', direction)
+                            client.publish('imageService/droneCircus/code', code)
 
             # else:
             #     code, voice = self.detector.detect(self.level)
             #     if code != -1:
             #         self.direction = self.__set_direction(code)
             #     self.map.putText(voice)
-
-    if command == "videoFrameFlying":
-
-        # Decoding the message
-        image = base64.b64decode(message.payload)
-        # converting into numpy array from buffer
-        npimg = np.frombuffer(image, dtype=np.uint8)
-        # Decode to Original Frame
-        frame = cv2.imdecode(npimg, 1)
-
-        if not returning:
-            code, img = detector.detect(frame, level)
-            img = cv2.resize(img, (800, 600))
-            img2 = cv2.flip(img, 1)
-            x2 = threading.Thread(target=send_video_detected(img2))
-            x2.start()
-            print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
-            if code != prevCode:
-                cont = 4
-                prevCode = code
-                code_sent = False
-            else:
-                cont = cont - 1
-                if cont < 0:
-                    if not code_sent:
-                        direction = __set_direction(int(code))
-                        client.publish('imageService/droneCircus/direction', direction)
-                    go_topic = "droneCircus/autopilotService/go"
-                    if code == 1:
-                        # north
-                        # clientAutopilot.publish(go_topic, "North")
-                        client.publish(go_topic, "North")
-                    elif code == 2:  # south
-                        # clientAutopilot.publish(go_topic, "South")
-                        client.publish(go_topic, "South")
-                    elif code == 5:
-                        # clientAutopilot.publish("droneCircus/autopilotService/drop")
-                        client.publish("droneCircus/autopilotService/drop")
-                        time.sleep(2)
-                        # clientAutopilot.publish("droneCircus/autopilotService/reset")
-                        client.publish("droneCircus/autopilotService/reset")
-                    elif code == 3:  # east
-                        # clientAutopilot.publish(go_topic, "East")
-                        client.publish(go_topic, "East")
-                    elif code == 4:  # west
-                        # clientAutopilot.publish(go_topic, "West")
-                        client.publish(go_topic, "West")
-                    elif code == 6:
-                        returning = True
-                        direction = "Volviendo a casa"
-                        # clientAutopilot.publish("droneCircus/autopilotService/returnToLaunch")
-                        client.publish("droneCircus/autopilotService/returnToLaunch")
-                    elif code == 0:
-                        # clientAutopilot.publish(go_topic, "Stop")
-                        client.publish(go_topic, "Stop")
 
 
 def on_message_autopilot(cli, userdata, message):
@@ -202,6 +148,9 @@ def ImageService ():
     global code_sent
     global video_on
     global returning
+    # global contador
+
+    # contador = 0
 
     prevCode = -1
     cont = 0

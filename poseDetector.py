@@ -226,7 +226,7 @@ class PoseDetector:
 
     def detect(self, image, level):
         pose_landmarks, img = self.__prepare(image)
-        res = ""
+        res = 0
         if len(pose_landmarks) > 17:
             if level == "difficult":
                 if self.__p0(pose_landmarks):
