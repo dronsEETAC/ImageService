@@ -56,7 +56,7 @@ def on_message(cli, userdata, message):
 
     if command == 'Connect':
         print('connected')
-        client.subscribe('+/imageService/parameters')
+        client.subscribe(origin+'/imageService/parameters')
 
     if command == 'parameters':
         parameters = json.loads(message.payload.decode("utf-8"))
@@ -72,7 +72,7 @@ def on_message(cli, userdata, message):
         else:
             detector = FaceDetector()
         video_on = True
-        client.subscribe('+/imageService/videoFrame')
+        client.subscribe(origin+'/imageService/videoFrame')
 
     if command == 'stopVideoStream':
 
@@ -102,7 +102,7 @@ def on_message(cli, userdata, message):
                 img = cv2.resize(frame, (800, 600))
                 img = cv2.flip(img, 1)
                 code, img2 = detector.detect(img, level)
-                x = threading.Thread(target=send_video_detected(img2))
+                x = threading.Thread(target=send_video_detected(img2,origin))
                 x.start()
                 # if user changed the pattern we will ignore the next 8 video frames
                 print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
@@ -118,7 +118,8 @@ def on_message(cli, userdata, message):
                         # the first 8 video frames of the new pattern (to be ignored) are done
                         # we can start showing new results
                         if not code_sent:
-                            client.publish('imageService/droneCircus/code', code)
+                            topic = 'imageService/' + origin + '/code'
+                            client.publish(topic, code)
 
             # else:
             #     code, voice = self.detector.detect(self.level)
@@ -130,12 +131,13 @@ def on_message(cli, userdata, message):
 def on_message_autopilot(cli, userdata, message):
     print("message received")
 
-def send_video_detected(img):
+def send_video_detected(img,origin):
     if video_on:
         # Converting into encoded bytes
         _, buffer = cv2.imencode('.jpg', img)
         jpg_as_text = base64.b64encode(buffer)
-        client.publish('imageService/droneCircus/videoFrame', jpg_as_text)
+        topic = 'imageService/'+origin+'/videoFrame'
+        client.publish(topic, jpg_as_text)
 
 
 
@@ -158,8 +160,6 @@ def ImageService ():
     video_on = False
     returning = False
 
-    # broker_address ="localhost"
-    # broker_port = 8080
     broker_address = "broker.hivemq.com"
     broker_port = 8000
     cap = cv2.VideoCapture(0)
