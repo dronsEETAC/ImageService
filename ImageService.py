@@ -14,6 +14,7 @@ from fingerDetector import FingerDetector
 from poseDetector import PoseDetector
 from faceDetector import FaceDetector
 from speechDetector import SpeechDetector
+from queue import Queue
 
 
 def __set_direction(code):
@@ -47,7 +48,7 @@ def on_message(cli, userdata, message):
     global video_on
     global clientAutopilot
     global returning
-    # global contador
+    global q
 
     splited = message.topic.split("/")
     origin = splited[0]
@@ -75,7 +76,6 @@ def on_message(cli, userdata, message):
         client.subscribe(origin+'/imageService/videoFrame')
 
     if command == 'stopVideoStream':
-
         prevCode = -1
         cont = 0
         code_sent = False
@@ -88,6 +88,7 @@ def on_message(cli, userdata, message):
         npimg = np.frombuffer(image, dtype=np.uint8)
         # Decode to Original Frame
         frame = cv2.imdecode(npimg, 1)
+        q.put(frame)
 
         if (video_on):
 
@@ -99,27 +100,25 @@ def on_message(cli, userdata, message):
             #     self.map.putText("Di algo ...")
             if mode != "voice":
 
-                img = cv2.resize(frame, (800, 600))
-                img = cv2.flip(img, 1)
-                code, img2 = detector.detect(img, level)
-                x = threading.Thread(target=send_video_detected(img2,origin))
+                # img = cv2.resize(frame, (800, 600))
+                # img = cv2.flip(img, 1)
+                # code, img2 = detector.detect(img, level)
+                x = threading.Thread(target=detect(frame, origin))
                 x.start()
                 # if user changed the pattern we will ignore the next 8 video frames
-                print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
-                # contador = contador + 1
-                # print("contador: ", contador)
-                if code != prevCode:
-                    cont = 4
-                    prevCode = code
-                    code_sent = False
-                else:
-                    cont = cont - 1
-                    if cont < 0:
-                        # the first 8 video frames of the new pattern (to be ignored) are done
-                        # we can start showing new results
-                        if not code_sent:
-                            topic = 'imageService/' + origin + '/code'
-                            client.publish(topic, code)
+                # print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
+                # if code != prevCode:
+                #     cont = 4
+                #     prevCode = code
+                #     code_sent = False
+                # else:
+                #     cont = cont - 1
+                #     if cont < 0:
+                #         # the first 8 video frames of the new pattern (to be ignored) are done
+                #         # we can start showing new results
+                #         if not code_sent:
+                #             topic = 'imageService/' + origin + '/code'
+                #             client.publish(topic, code)
 
             # else:
             #     code, voice = self.detector.detect(self.level)
@@ -132,6 +131,7 @@ def on_message_autopilot(cli, userdata, message):
     print("message received")
 
 def send_video_detected(img,origin):
+
     if video_on:
         # Converting into encoded bytes
         _, buffer = cv2.imencode('.jpg', img)
@@ -139,6 +139,32 @@ def send_video_detected(img,origin):
         topic = 'imageService/'+origin+'/videoFrame'
         client.publish(topic, jpg_as_text)
 
+def detect(frame, origin):
+    global prevCode
+    global code_sent
+    global cont
+    img = cv2.resize(frame, (800, 600))
+    img = cv2.flip(img, 1)
+    code, img2 = detector.detect(img, level)
+    print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
+    # Converting into encoded bytes
+    _, buffer = cv2.imencode('.jpg', img2)
+    jpg_as_text = base64.b64encode(buffer)
+    topic = 'imageService/' + origin + '/videoFrame'
+    client.publish(topic, jpg_as_text)
+
+    if code != prevCode:
+        cont = 4
+        prevCode = code
+        code_sent = False
+    else:
+        cont = cont - 1
+        if cont < 0:
+            # the first 8 video frames of the new pattern (to be ignored) are done
+            # we can start showing new results
+            if not code_sent:
+                topic = 'imageService/' + origin + '/code'
+                client.publish(topic, code)
 
 
 def ImageService ():
@@ -150,9 +176,6 @@ def ImageService ():
     global code_sent
     global video_on
     global returning
-    # global contador
-
-    # contador = 0
 
     prevCode = -1
     cont = 0
@@ -161,6 +184,7 @@ def ImageService ():
     returning = False
 
     broker_address = "broker.hivemq.com"
+    # broker_address = "localhost"
     broker_port = 8000
     cap = cv2.VideoCapture(0)
     client = mqtt.Client(transport="websockets")
@@ -169,13 +193,6 @@ def ImageService ():
     client.subscribe('+/imageService/Connect')
     print('Waiting connection')
     client.loop_start()
-
-    # broker_address = "broker.hivemq.com"
-    # broker_port = 8000
-    # clientAutopilot = mqtt.Client(transport="websockets")
-    # clientAutopilot.on_message = on_message_autopilot  # Callback function executed when a message is received
-    # clientAutopilot.connect(broker_address, broker_port)
-    # clientAutopilot.loop_start()
 
 
 if __name__ == '__main__':
