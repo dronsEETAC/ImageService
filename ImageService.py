@@ -48,6 +48,9 @@ def on_message(cli, userdata, message):
     global video_on
     global clientAutopilot
     global returning
+    global frameCont1
+    global frameCont2
+    global origin
     global q
 
     splited = message.topic.split("/")
@@ -74,6 +77,7 @@ def on_message(cli, userdata, message):
             detector = FaceDetector()
         video_on = True
         client.subscribe(origin+'/imageService/videoFrame')
+        print("subscribed")
 
     if command == 'stopVideoStream':
         prevCode = -1
@@ -82,29 +86,32 @@ def on_message(cli, userdata, message):
         video_on = False
 
     if command == 'videoFrame':
-        # Decoding the message
-        image = base64.b64decode(message.payload)
-        # converting into numpy array from buffer
-        npimg = np.frombuffer(image, dtype=np.uint8)
-        # Decode to Original Frame
-        frame = cv2.imdecode(npimg, 1)
-        q.put(frame)
+        frameCont1 = frameCont1 + 1
+        print("received: ", frameCont1)
+        if q.qsize() < 5:
+            # Decoding the message
+            image = base64.b64decode(message.payload)
+            # converting into numpy array from buffer
+            npimg = np.frombuffer(image, dtype=np.uint8)
+            # Decode to Original Frame
+            frame = cv2.imdecode(npimg, 1)
 
-        if (video_on):
+            if (video_on):
 
-            # when the user changes the pattern (new face, new pose or new fingers) the system
-            # waits some time (ignore 8 video frames) for the user to stabilize the new pattern
-            # we need the following variables to control this
-            #
-            # if mode == "voice":
-            #     self.map.putText("Di algo ...")
-            if mode != "voice":
-
+                # when the user changes the pattern (new face, new pose or new fingers) the system
+                # waits some time (ignore 8 video frames) for the user to stabilize the new pattern
+                # we need the following variables to control this
+                #
+                # if mode == "voice":
+                #     self.map.putText("Di algo ...")
+                if mode != "voice":
+                    print("size queue: ", q.qsize())
+                    q.put(frame)
                 # img = cv2.resize(frame, (800, 600))
                 # img = cv2.flip(img, 1)
                 # code, img2 = detector.detect(img, level)
-                x = threading.Thread(target=detect(frame, origin))
-                x.start()
+                # x = threading.Thread(target=send_video_detected(frame, origin))
+                # x.start()
                 # if user changed the pattern we will ignore the next 8 video frames
                 # print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
                 # if code != prevCode:
@@ -132,6 +139,8 @@ def on_message_autopilot(cli, userdata, message):
 
 def send_video_detected(img,origin):
 
+    global video_on
+
     if video_on:
         # Converting into encoded bytes
         _, buffer = cv2.imencode('.jpg', img)
@@ -139,10 +148,14 @@ def send_video_detected(img,origin):
         topic = 'imageService/'+origin+'/videoFrame'
         client.publish(topic, jpg_as_text)
 
+
 def detect(frame, origin):
     global prevCode
     global code_sent
     global cont
+    global frameCont1
+    global frameCont2
+
     img = cv2.resize(frame, (800, 600))
     img = cv2.flip(img, 1)
     code, img2 = detector.detect(img, level)
@@ -152,6 +165,8 @@ def detect(frame, origin):
     jpg_as_text = base64.b64encode(buffer)
     topic = 'imageService/' + origin + '/videoFrame'
     client.publish(topic, jpg_as_text)
+    frameCont2 = frameCont2 + 1
+    print("received: ", frameCont1, " sent: ", frameCont2)
 
     if code != prevCode:
         cont = 4
@@ -166,6 +181,18 @@ def detect(frame, origin):
                 topic = 'imageService/' + origin + '/code'
                 client.publish(topic, code)
 
+def process_queue():
+    global video_on
+    global q
+    global origin
+
+    while True:
+        if not q.empty():
+            frame = q.get()
+            detect(frame, origin)
+        else:
+            time.sleep(0.25)
+
 
 def ImageService ():
     global cap
@@ -176,6 +203,15 @@ def ImageService ():
     global code_sent
     global video_on
     global returning
+    global frameCont1
+    global frameCont2
+    global q
+    global origin
+
+    q = Queue()
+
+    frameCont1 = 0
+    frameCont2 = 0
 
     prevCode = -1
     cont = 0
@@ -189,10 +225,15 @@ def ImageService ():
     cap = cv2.VideoCapture(0)
     client = mqtt.Client(transport="websockets")
     client.on_message = on_message # Callback function executed when a message is received
+    client.max_queued_messages_set(1)
+    client.max_inflight_messages_set(1)
     client.connect(broker_address, broker_port)
     client.subscribe('+/imageService/Connect')
     print('Waiting connection')
     client.loop_start()
+
+    x = threading.Thread(target=process_queue())
+    x.start()
 
 
 if __name__ == '__main__':
