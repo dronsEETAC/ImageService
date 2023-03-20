@@ -77,7 +77,6 @@ def on_message(cli, userdata, message):
             detector = FaceDetector()
         video_on = True
         client.subscribe(origin+'/imageService/videoFrame')
-        print("subscribed")
 
     if command == 'stopVideoStream':
         prevCode = -1
@@ -89,8 +88,11 @@ def on_message(cli, userdata, message):
         frameCont1 = frameCont1 + 1
         print("received: ", frameCont1)
         if q.qsize() < 5:
+            payload = json.loads(message.payload.decode("utf-8"))
             # Decoding the message
-            image = base64.b64decode(message.payload)
+            image_text = payload["image"]
+            image = base64.b64decode(bytes(image_text, "utf-8"))
+            index_img = payload["index"]
             # converting into numpy array from buffer
             npimg = np.frombuffer(image, dtype=np.uint8)
             # Decode to Original Frame
@@ -105,8 +107,9 @@ def on_message(cli, userdata, message):
                 # if mode == "voice":
                 #     self.map.putText("Di algo ...")
                 if mode != "voice":
-                    print("size queue: ", q.qsize())
-                    q.put(frame)
+                    detect(frame, origin, index_img)
+                    # print("size queue: ", q.qsize())
+                    # q.put((frame, index_img))
                 # img = cv2.resize(frame, (800, 600))
                 # img = cv2.flip(img, 1)
                 # code, img2 = detector.detect(img, level)
@@ -149,7 +152,7 @@ def send_video_detected(img,origin):
         client.publish(topic, jpg_as_text)
 
 
-def detect(frame, origin):
+def detect(frame, origin, index):
     global prevCode
     global code_sent
     global cont
@@ -158,13 +161,19 @@ def detect(frame, origin):
 
     img = cv2.resize(frame, (800, 600))
     img = cv2.flip(img, 1)
-    code, img2 = detector.detect(img, level)
+    # code, img2 = detector.detect(img, level)
+    code, multi_landmarks = detector.detect(img, level)
     print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
     # Converting into encoded bytes
-    _, buffer = cv2.imencode('.jpg', img2)
-    jpg_as_text = base64.b64encode(buffer)
+    # _, buffer = cv2.imencode('.jpg', img2)
+    # jpg_as_text = base64.b64encode(buffer)
+    message = {
+        "landmarks": multi_landmarks,
+        "index": index
+    }
     topic = 'imageService/' + origin + '/videoFrame'
-    client.publish(topic, jpg_as_text)
+    # client.publish(topic, index)
+    client.publish(topic, json.dumps(message))
     frameCont2 = frameCont2 + 1
     print("received: ", frameCont1, " sent: ", frameCont2)
 
@@ -188,8 +197,8 @@ def process_queue():
 
     while True:
         if not q.empty():
-            frame = q.get()
-            detect(frame, origin)
+            frame, index = q.get()
+            detect(frame, origin, index)
         else:
             time.sleep(0.25)
 
@@ -219,8 +228,8 @@ def ImageService ():
     video_on = False
     returning = False
 
-    broker_address = "broker.hivemq.com"
-    # broker_address = "localhost"
+    # broker_address = "broker.hivemq.com"
+    broker_address = "localhost"
     broker_port = 8000
     cap = cv2.VideoCapture(0)
     client = mqtt.Client(transport="websockets")
@@ -232,8 +241,8 @@ def ImageService ():
     print('Waiting connection')
     client.loop_start()
 
-    x = threading.Thread(target=process_queue())
-    x.start()
+    # x = threading.Thread(target=process_queue())
+    # x.start()
 
 
 if __name__ == '__main__':

@@ -35,38 +35,46 @@ class FaceDetector:
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         if self.results.multi_face_landmarks:
+            multi_landmarks = []
             for face_landmarks in self.results.multi_face_landmarks:
                 face = face_landmarks.landmark
                 faceLandmarks = list(
                     np.array(
                     [[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in face]).flatten())
+                landmarks = []
+                for landmark in face:
+                    landmarks.append({
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z
+                    })
+                multi_landmarks.append(landmarks);
 
+            # self.mp_drawing.draw_landmarks(
+            #     image=image,
+            #     landmark_list=face_landmarks,
+            #     connections=self.mp_face_mesh.FACEMESH_TESSELATION,
+            #     landmark_drawing_spec=None,
+            #     connection_drawing_spec=self.mp_drawing_styles
+            #     .get_default_face_mesh_tesselation_style())
+            # self.mp_drawing.draw_landmarks(
+            #     image=image,
+            #     landmark_list=face_landmarks,
+            #     connections=self.mp_face_mesh.FACEMESH_CONTOURS,
+            #     landmark_drawing_spec=None,
+            #     connection_drawing_spec=self.mp_drawing_styles
+            #     .get_default_face_mesh_contours_style())
+            # self.mp_drawing.draw_landmarks(
+            #     image=image,
+            #     landmark_list=face_landmarks,
+            #     connections=self.mp_face_mesh.FACEMESH_IRISES,
+            #     landmark_drawing_spec=None,
+            #     connection_drawing_spec=self.mp_drawing_styles
+            #     .get_default_face_mesh_iris_connections_style())
 
-            self.mp_drawing.draw_landmarks(
-                image=image,
-                landmark_list=face_landmarks,
-                connections=self.mp_face_mesh.FACEMESH_TESSELATION,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=self.mp_drawing_styles
-                .get_default_face_mesh_tesselation_style())
-            self.mp_drawing.draw_landmarks(
-                image=image,
-                landmark_list=face_landmarks,
-                connections=self.mp_face_mesh.FACEMESH_CONTOURS,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=self.mp_drawing_styles
-                .get_default_face_mesh_contours_style())
-            self.mp_drawing.draw_landmarks(
-                image=image,
-                landmark_list=face_landmarks,
-                connections=self.mp_face_mesh.FACEMESH_IRISES,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=self.mp_drawing_styles
-                .get_default_face_mesh_iris_connections_style())
-
-            return faceLandmarks, image
+            return faceLandmarks, multi_landmarks
         else:
-            return [],image
+            return []
 
     def getSize(self,image, face_landmarks, INDEXES):
         '''
@@ -191,7 +199,7 @@ class FaceDetector:
 
     def detect(self, image, level):
         """Returns the pose made by the face"""
-        faceLandmarks, img = self.__prepare(image)
+        faceLandmarks, multi_landmarks = self.__prepare(image)
 
 
         code = -1
@@ -214,5 +222,5 @@ class FaceDetector:
                 code = 0  #stop
             elif ( leftEye== 'Very Open'  and  rightEye== 'Very Open' and  mouth == 'Very Open' and inclination == 'normal'):
                 code = 6  #return
-        return code, img
+        return code, multi_landmarks
 
