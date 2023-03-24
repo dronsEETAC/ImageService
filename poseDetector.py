@@ -44,7 +44,8 @@ class PoseDetector:
                 landmarks.append({
                     "x": landmark.x,
                     "y": landmark.y,
-                    "z": landmark.z
+                    "z": landmark.z,
+                    "visibility": landmark.visibility
                 })
 
         return pose_landmarks, landmarks

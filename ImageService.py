@@ -87,6 +87,9 @@ def on_message(cli, userdata, message):
     if command == 'videoFrame':
         frameCont1 = frameCont1 + 1
         print("received: ", frameCont1)
+
+        # si el frame rate es molt alt, utilitzar la queue per fer flow control
+
         if q.qsize() < 5:
             payload = json.loads(message.payload.decode("utf-8"))
             # Decoding the message
@@ -107,34 +110,9 @@ def on_message(cli, userdata, message):
                 # if mode == "voice":
                 #     self.map.putText("Di algo ...")
                 if mode != "voice":
-                    detect(frame, origin, index_img)
-                    # print("size queue: ", q.qsize())
-                    # q.put((frame, index_img))
-                # img = cv2.resize(frame, (800, 600))
-                # img = cv2.flip(img, 1)
-                # code, img2 = detector.detect(img, level)
-                # x = threading.Thread(target=send_video_detected(frame, origin))
-                # x.start()
-                # if user changed the pattern we will ignore the next 8 video frames
-                # print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
-                # if code != prevCode:
-                #     cont = 4
-                #     prevCode = code
-                #     code_sent = False
-                # else:
-                #     cont = cont - 1
-                #     if cont < 0:
-                #         # the first 8 video frames of the new pattern (to be ignored) are done
-                #         # we can start showing new results
-                #         if not code_sent:
-                #             topic = 'imageService/' + origin + '/code'
-                #             client.publish(topic, code)
-
-            # else:
-            #     code, voice = self.detector.detect(self.level)
-            #     if code != -1:
-            #         self.direction = self.__set_direction(code)
-            #     self.map.putText(voice)
+                    # detect(frame, origin, index_img)
+                    print("size queue: ", q.qsize())
+                    q.put((frame, index_img))
 
 
 def on_message_autopilot(cli, userdata, message):
@@ -161,12 +139,8 @@ def detect(frame, origin, index):
 
     img = cv2.resize(frame, (800, 600))
     img = cv2.flip(img, 1)
-    # code, img2 = detector.detect(img, level)
     code, multi_landmarks = detector.detect(img, level)
     print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
-    # Converting into encoded bytes
-    # _, buffer = cv2.imencode('.jpg', img2)
-    # jpg_as_text = base64.b64encode(buffer)
     message = {
         "landmarks": multi_landmarks,
         "index": index
@@ -241,8 +215,8 @@ def ImageService ():
     print('Waiting connection')
     client.loop_start()
 
-    # x = threading.Thread(target=process_queue())
-    # x.start()
+    x = threading.Thread(target=process_queue())
+    x.start()
 
 
 if __name__ == '__main__':
