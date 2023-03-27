@@ -33,10 +33,11 @@ class FingerDetector:
         left_hand_landmarks = []
         right_hand_landmarks = []
 
+        multi_landmarks = []
+        landmarks_left = []
+        landmarks_right = []
         if results.multi_hand_landmarks:
-
             for hand_landmarks in results.multi_hand_landmarks:
-
                 # Get hand index to check label (left or right)
                 hand_index = results.multi_hand_landmarks.index(hand_landmarks)
                 hand_label = (
@@ -44,23 +45,37 @@ class FingerDetector:
                 )
                 # Set variable to keep landmarks positions (x and y)
                 if hand_label == "Left":
+                    landmarks_left = []
                     # Fill list with x and y positions of each landmark
-                    for landmarks in hand_landmarks.landmark:
-                        left_hand_landmarks.append([landmarks.x, landmarks.y])
+                    for landmark in hand_landmarks.landmark:
+                        left_hand_landmarks.append([landmark.x, landmark.y])
+                        landmarks_left.append({
+                            "x": landmark.x,
+                            "y": landmark.y,
+                            "z": landmark.z
+                        })
                 if hand_label == "Right":
+                    landmarks_right = []
                     # Fill list with x and y positions of each landmark
-                    for landmarks in hand_landmarks.landmark:
-                        right_hand_landmarks.append([landmarks.x, landmarks.y])
-                # draw hand-knuckles and conecting lines in image
-                self.mp_drawing.draw_landmarks(
-                    image,
-                    hand_landmarks,
-                    self.mp_hands.HAND_CONNECTIONS,
-                    self.mp_drawing_styles.get_default_hand_landmarks_style(),
-                    self.mp_drawing_styles.get_default_hand_connections_style(),
-                )
+                    for landmark in hand_landmarks.landmark:
+                        right_hand_landmarks.append([landmark.x, landmark.y])
+                        landmarks_right.append({
+                            "x": landmark.x,
+                            "y": landmark.y,
+                            "z": landmark.z
+                        })
 
-        return left_hand_landmarks, right_hand_landmarks, image
+                multi_landmarks = [landmarks_right, landmarks_left]
+                # draw hand-knuckles and conecting lines in image
+                # self.mp_drawing.draw_landmarks(
+                #     image,
+                #     hand_landmarks,
+                #     self.mp_hands.HAND_CONNECTIONS,
+                #     self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                #     self.mp_drawing_styles.get_default_hand_connections_style(),
+                # )
+        # return left_hand_landmarks, right_hand_landmarks, image
+        return left_hand_landmarks, right_hand_landmarks, multi_landmarks
 
     # this is an example of difficult pattern detection
     # the difficult pattern is the OK gesture
@@ -92,7 +107,8 @@ class FingerDetector:
             return False
 
     def detect(self, image, level):
-        left_hand_landmarks, right_hand_landmarks, img = self.__prepare(image)
+        # left_hand_landmarks, right_hand_landmarks, img = self.__prepare(image)
+        left_hand_landmarks, right_hand_landmarks, multi_landmarks = self.__prepare(image)
         res = ""
         if level == "difficult":
             if self.__pose_d1(left_hand_landmarks, right_hand_landmarks):
@@ -101,7 +117,8 @@ class FingerDetector:
                 res = 'Pose D22222'
             elif self.__poseD3( left_hand_landmarks, right_hand_landmarks):
                 res = 'Pose D333333"""
-            return res, img
+            # return res, img
+            return res
         else:
             # returns the number of risen fingers
             # ATTENTION: WE DO NOT TAKE INTO ACCOUNT THE THUMB FINGER
@@ -140,4 +157,5 @@ class FingerDetector:
                 if right_hand_landmarks[20][1] < right_hand_landmarks[18][1]:  # Pinky
                     finger_count = finger_count + 1
 
-            return finger_count, img
+            # return finger_count, img
+            return finger_count, multi_landmarks

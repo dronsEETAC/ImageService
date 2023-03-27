@@ -30,17 +30,25 @@ class PoseDetector:
         image.flags.writeable = True
 
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        self.mp_drawing.draw_landmarks(
-            image,
-            results.pose_landmarks,
-            self.mp_pose.POSE_CONNECTIONS,
-            landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style(),
-        )
+        # self.mp_drawing.draw_landmarks(
+        #     image,
+        #     results.pose_landmarks,
+        #     self.mp_pose.POSE_CONNECTIONS,
+        #     landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style(),
+        # )
         pose_landmarks = []
+        landmarks = []
         if results.pose_landmarks:
             for landmark in results.pose_landmarks.landmark:
                 pose_landmarks.append([landmark.x, landmark.y])
-        return pose_landmarks, image
+                landmarks.append({
+                    "x": landmark.x,
+                    "y": landmark.y,
+                    "z": landmark.z,
+                    "visibility": landmark.visibility
+                })
+
+        return pose_landmarks, landmarks
 
     # these are 3 examples of difficult patterns
 
@@ -225,7 +233,7 @@ class PoseDetector:
             return False
 
     def detect(self, image, level):
-        pose_landmarks, img = self.__prepare(image)
+        pose_landmarks, landmarks = self.__prepare(image)
         res = 0
         if len(pose_landmarks) > 17:
             if level == "difficult":
@@ -286,4 +294,4 @@ class PoseDetector:
                     if pose_landmarks[18][0] < pose_landmarks[17][0]:
                         res = 1  # NORTH
 
-        return res, img
+        return res, landmarks
