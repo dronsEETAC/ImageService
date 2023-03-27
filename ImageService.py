@@ -110,9 +110,9 @@ def on_message(cli, userdata, message):
                 # if mode == "voice":
                 #     self.map.putText("Di algo ...")
                 if mode != "voice":
-                    # detect(frame, origin, index_img)
-                    print("size queue: ", q.qsize())
-                    q.put((frame, index_img))
+                    detect(frame, origin, index_img)
+                    # print("size queue: ", q.qsize())
+                    # q.put((frame, index_img))
 
 
 def on_message_autopilot(cli, userdata, message):
@@ -215,8 +215,8 @@ def ImageService ():
     print('Waiting connection')
     client.loop_start()
 
-    x = threading.Thread(target=process_queue())
-    x.start()
+    # x = threading.Thread(target=process_queue())
+    # x.start()
 
 
 if __name__ == '__main__':
