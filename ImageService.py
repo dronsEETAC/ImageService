@@ -52,6 +52,8 @@ def on_message(cli, userdata, message):
     global frameCont2
     global origin
     global q
+    global width_image
+    global height_image
 
     splited = message.topic.split("/")
     origin = splited[0]
@@ -60,13 +62,15 @@ def on_message(cli, userdata, message):
 
     if command == 'Connect':
         print('connected')
-        client.subscribe(origin+'/imageService/parameters')
+        client.subscribe(origin+'/imageService/#')
 
     if command == 'parameters':
         parameters = json.loads(message.payload.decode("utf-8"))
         mode = parameters['mode']
         level = parameters['level']
         selected_level = parameters['selected_level']
+        width_image = parameters['width']
+        height_image = parameters['height']
         if mode == "fingers":
             detector = FingerDetector()
         elif mode == "pose":
@@ -75,8 +79,7 @@ def on_message(cli, userdata, message):
             detector = SpeechDetector()
         else:
             detector = FaceDetector()
-        video_on = True
-        client.subscribe(origin+'/imageService/videoFrame')
+
 
     if command == 'stopVideoStream':
         prevCode = -1
@@ -87,6 +90,7 @@ def on_message(cli, userdata, message):
     if command == 'videoFrame':
         frameCont1 = frameCont1 + 1
         print("received: ", frameCont1)
+        video_on = True
 
         # si el frame rate es molt alt, utilitzar la queue per fer flow control
 
@@ -136,8 +140,10 @@ def detect(frame, origin, index):
     global cont
     global frameCont1
     global frameCont2
+    global width_image
+    global height_image
 
-    img = cv2.resize(frame, (800, 600))
+    img = cv2.resize(frame, (int(width_image), int(height_image)))
     img = cv2.flip(img, 1)
     code, multi_landmarks = detector.detect(img, level)
     print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
@@ -202,8 +208,8 @@ def ImageService ():
     video_on = False
     returning = False
 
-    # broker_address = "broker.hivemq.com"
-    broker_address = "localhost"
+    broker_address = "broker.hivemq.com"
+    # broker_address = "localhost"
     broker_port = 8000
     cap = cv2.VideoCapture(0)
     client = mqtt.Client(transport="websockets")
@@ -213,7 +219,7 @@ def ImageService ():
     client.connect(broker_address, broker_port)
     client.subscribe('+/imageService/Connect')
     print('Waiting connection')
-    client.loop_start()
+    client.loop_forever()
 
     # x = threading.Thread(target=process_queue())
     # x.start()
