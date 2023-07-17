@@ -17,24 +17,6 @@ from speechDetector import SpeechDetector
 from queue import Queue
 
 
-def __set_direction(code):
-    if code == 1:
-        return "Norte"
-    elif code == 2:
-        return "Sur"
-    elif code == 3:
-        return "Este"
-    elif code == 4:
-        return "Oeste"
-    elif code == 5:
-        return "Drop"
-    elif code == 6:
-        return "Retorna"
-    elif code == 0:
-        return "Stop"
-    else:
-        return ""
-
 def on_message(cli, userdata, message):
 
     global client
@@ -118,20 +100,16 @@ def on_message(cli, userdata, message):
                     # print("size queue: ", q.qsize())
                     # q.put((frame, index_img))
 
-
-def on_message_autopilot(cli, userdata, message):
-    print("message received")
-
-def send_video_detected(img,origin):
-
-    global video_on
-
-    if video_on:
-        # Converting into encoded bytes
-        _, buffer = cv2.imencode('.jpg', img)
-        jpg_as_text = base64.b64encode(buffer)
-        topic = 'imageService/'+origin+'/videoFrame'
-        client.publish(topic, jpg_as_text)
+# def send_video_detected(img,origin):
+#
+#     global video_on
+#
+#     if video_on:
+#         # Converting into encoded bytes
+#         _, buffer = cv2.imencode('.jpg', img)
+#         jpg_as_text = base64.b64encode(buffer)
+#         topic = 'imageService/'+origin+'/videoFrame'
+#         client.publish(topic, jpg_as_text)
 
 
 def detect(frame, origin, index):
