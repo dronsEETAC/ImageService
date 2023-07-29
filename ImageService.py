@@ -40,7 +40,7 @@ def on_message(cli, userdata, message):
     splited = message.topic.split("/")
     origin = splited[0]
     command = splited[2]
-    print(message.topic)
+    print("message received")
 
     if command == 'Connect':
         print('connected')
@@ -62,7 +62,6 @@ def on_message(cli, userdata, message):
         else:
             detector = FaceDetector()
 
-
     if command == 'stopVideoStream':
         prevCode = -1
         cont = 0
@@ -73,9 +72,7 @@ def on_message(cli, userdata, message):
         frameCont1 = frameCont1 + 1
         print("received: ", frameCont1)
         video_on = True
-
         # si el frame rate es molt alt, utilitzar la queue per fer flow control
-
         if q.qsize() < 5:
             payload = json.loads(message.payload.decode("utf-8"))
             # Decoding the message
@@ -86,15 +83,7 @@ def on_message(cli, userdata, message):
             npimg = np.frombuffer(image, dtype=np.uint8)
             # Decode to Original Frame
             frame = cv2.imdecode(npimg, 1)
-
             if (video_on):
-
-                # when the user changes the pattern (new face, new pose or new fingers) the system
-                # waits some time (ignore 8 video frames) for the user to stabilize the new pattern
-                # we need the following variables to control this
-                #
-                # if mode == "voice":
-                #     self.map.putText("Di algo ...")
                 if mode != "voice":
                     detect(frame, origin, index_img)
                     # print("size queue: ", q.qsize())
@@ -186,22 +175,27 @@ def ImageService ():
     video_on = False
     returning = False
 
-    broker_address = "broker.hivemq.com"
+    broker_address = "classpip.upc.edu"
+    # broker_address = "broker.hivemq.com"
     # broker_address = "localhost"
     broker_port = 8000
+    username = 'dronsEETAC'
+    password = 'mimara1456.'
     cap = cv2.VideoCapture(0)
-    client = mqtt.Client(transport="websockets")
+    client = mqtt.Client("ImageService",transport="websockets")
+    client.username_pw_set(username, password)
     client.on_message = on_message # Callback function executed when a message is received
     client.max_queued_messages_set(1)
     client.max_inflight_messages_set(1)
     client.connect(broker_address, broker_port)
     client.subscribe('+/imageService/Connect')
     print('Waiting connection')
-    client.loop_forever()
+
 
     # x = threading.Thread(target=process_queue())
     # x.start()
 
+    client.loop_forever()
 
 if __name__ == '__main__':
     ImageService()
