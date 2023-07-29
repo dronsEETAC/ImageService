@@ -17,24 +17,6 @@ from speechDetector import SpeechDetector
 from queue import Queue
 
 
-def __set_direction(code):
-    if code == 1:
-        return "Norte"
-    elif code == 2:
-        return "Sur"
-    elif code == 3:
-        return "Este"
-    elif code == 4:
-        return "Oeste"
-    elif code == 5:
-        return "Drop"
-    elif code == 6:
-        return "Retorna"
-    elif code == 0:
-        return "Stop"
-    else:
-        return ""
-
 def on_message(cli, userdata, message):
 
     global client
@@ -52,21 +34,25 @@ def on_message(cli, userdata, message):
     global frameCont2
     global origin
     global q
+    global width_image
+    global height_image
 
     splited = message.topic.split("/")
     origin = splited[0]
     command = splited[2]
-    print(message.topic)
+    print("message received")
 
     if command == 'Connect':
         print('connected')
-        client.subscribe(origin+'/imageService/parameters')
+        client.subscribe(origin+'/imageService/#')
 
     if command == 'parameters':
         parameters = json.loads(message.payload.decode("utf-8"))
         mode = parameters['mode']
         level = parameters['level']
         selected_level = parameters['selected_level']
+        width_image = parameters['width']
+        height_image = parameters['height']
         if mode == "fingers":
             detector = FingerDetector()
         elif mode == "pose":
@@ -75,8 +61,6 @@ def on_message(cli, userdata, message):
             detector = SpeechDetector()
         else:
             detector = FaceDetector()
-        video_on = True
-        client.subscribe(origin+'/imageService/videoFrame')
 
     if command == 'stopVideoStream':
         prevCode = -1
@@ -87,9 +71,8 @@ def on_message(cli, userdata, message):
     if command == 'videoFrame':
         frameCont1 = frameCont1 + 1
         print("received: ", frameCont1)
-
+        video_on = True
         # si el frame rate es molt alt, utilitzar la queue per fer flow control
-
         if q.qsize() < 5:
             payload = json.loads(message.payload.decode("utf-8"))
             # Decoding the message
@@ -100,34 +83,22 @@ def on_message(cli, userdata, message):
             npimg = np.frombuffer(image, dtype=np.uint8)
             # Decode to Original Frame
             frame = cv2.imdecode(npimg, 1)
-
             if (video_on):
-
-                # when the user changes the pattern (new face, new pose or new fingers) the system
-                # waits some time (ignore 8 video frames) for the user to stabilize the new pattern
-                # we need the following variables to control this
-                #
-                # if mode == "voice":
-                #     self.map.putText("Di algo ...")
                 if mode != "voice":
                     detect(frame, origin, index_img)
                     # print("size queue: ", q.qsize())
                     # q.put((frame, index_img))
 
-
-def on_message_autopilot(cli, userdata, message):
-    print("message received")
-
-def send_video_detected(img,origin):
-
-    global video_on
-
-    if video_on:
-        # Converting into encoded bytes
-        _, buffer = cv2.imencode('.jpg', img)
-        jpg_as_text = base64.b64encode(buffer)
-        topic = 'imageService/'+origin+'/videoFrame'
-        client.publish(topic, jpg_as_text)
+# def send_video_detected(img,origin):
+#
+#     global video_on
+#
+#     if video_on:
+#         # Converting into encoded bytes
+#         _, buffer = cv2.imencode('.jpg', img)
+#         jpg_as_text = base64.b64encode(buffer)
+#         topic = 'imageService/'+origin+'/videoFrame'
+#         client.publish(topic, jpg_as_text)
 
 
 def detect(frame, origin, index):
@@ -136,8 +107,10 @@ def detect(frame, origin, index):
     global cont
     global frameCont1
     global frameCont2
+    global width_image
+    global height_image
 
-    img = cv2.resize(frame, (800, 600))
+    img = cv2.resize(frame, (int(width_image), int(height_image)))
     img = cv2.flip(img, 1)
     code, multi_landmarks = detector.detect(img, level)
     print("code: ", code, "prev code: ", prevCode, "code_sent: ", code_sent)
@@ -202,22 +175,27 @@ def ImageService ():
     video_on = False
     returning = False
 
+    broker_address = "classpip.upc.edu"
     # broker_address = "broker.hivemq.com"
-    broker_address = "localhost"
+    # broker_address = "localhost"
     broker_port = 8000
+    username = 'dronsEETAC'
+    password = 'mimara1456.'
     cap = cv2.VideoCapture(0)
-    client = mqtt.Client(transport="websockets")
+    client = mqtt.Client("ImageService",transport="websockets")
+    client.username_pw_set(username, password)
     client.on_message = on_message # Callback function executed when a message is received
     client.max_queued_messages_set(1)
     client.max_inflight_messages_set(1)
     client.connect(broker_address, broker_port)
     client.subscribe('+/imageService/Connect')
     print('Waiting connection')
-    client.loop_start()
+
 
     # x = threading.Thread(target=process_queue())
     # x.start()
 
+    client.loop_forever()
 
 if __name__ == '__main__':
     ImageService()
