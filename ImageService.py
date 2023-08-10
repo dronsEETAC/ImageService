@@ -150,7 +150,7 @@ def process_queue():
             time.sleep(0.25)
 
 
-def ImageService ():
+def ImageService(connection_mode, operation_mode, external_broker, username, password):
     global cap
     global client
     global clientAutopilot
@@ -175,15 +175,26 @@ def ImageService ():
     video_on = False
     returning = False
 
-    broker_address = "classpip.upc.edu"
+    print('Connection mode: ', connection_mode)
+    print('Operation mode: ', operation_mode)
+
     # broker_address = "broker.hivemq.com"
     # broker_address = "localhost"
+
+    if connection_mode == 'global':
+        broker_address = external_broker
+    else:
+        broker_address = 'localhost'
+
+    print('External broker: ', broker_address)
+
     broker_port = 8000
-    username = 'dronsEETAC'
-    password = 'mimara1456.'
+
     cap = cv2.VideoCapture(0)
+
     client = mqtt.Client("ImageService",transport="websockets")
-    client.username_pw_set(username, password)
+    if broker_address == 'classpip.upc.edu':
+        client.username_pw_set(username, password)
     client.on_message = on_message # Callback function executed when a message is received
     client.max_queued_messages_set(1)
     client.max_inflight_messages_set(1)
@@ -198,4 +209,18 @@ def ImageService ():
     client.loop_forever()
 
 if __name__ == '__main__':
-    ImageService()
+    import sys
+
+    connection_mode = sys.argv[1]  # global or local
+    operation_mode = sys.argv[2]  # simulation or production
+    username = None
+    password = None
+    if connection_mode == 'global':
+        external_broker = sys.argv[3]
+        if external_broker == 'classpip.upc.edu':
+            username = sys.argv[4]
+            password = sys.argv[5]
+    else:
+        external_broker = None
+
+    ImageService(connection_mode,operation_mode, external_broker, username, password)
