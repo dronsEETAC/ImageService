@@ -29,11 +29,11 @@ Command | Description | Payload | Answer | Answer payload
 --- | --- | --- | --- |---
 *Connect* | The image service subscribes to the messages from the origin | No | No | No
 *parameters* | Receives a series of parameters to set the Drone Circus Game modality | Yes (see Note 1) | No | No 
-*stopVideoStream* | stop sending pictures | No | No | No
+*stopVideoStream* | Stop sending pictures | No | No | No
 *videoFrame* | Receives a video frame to be detected | Yes (see Note 2) | *videoFrame* | Yes (see Note 3)
- |  |  |  | *code* | The code detected from 0 to 6.
+ " | " | " | *code* | The code detected from 0 to 6.
 
-Note 1
+**Note 1**
 
 The JSON received must contain the following parameters.
 
@@ -49,7 +49,7 @@ The parameter 'mode' can be 'fingers', 'faces' or 'poses'. The parameter level c
 }
 
 ```
-Note 2
+**Note 2**
 
 The video frame received is inside a JSON encoded in base64 with the index corresponding to that image in the Drone Circus Game:
 
@@ -61,7 +61,7 @@ The video frame received is inside a JSON encoded in base64 with the index corre
 
 ```
 
-Note 3
+**Note 3**
 
 The vector of landmarks resulting from the detection are inside a JSON with the index corresponding to the image being detected. Each landmark contains the positions x, y and z to position it on the image.
 
